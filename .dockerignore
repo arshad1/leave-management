@@ -1,0 +1,39 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies
+node_modules
+npm-debug.log
+
+# Build outputs
+dist
+build
+coverage
+
+# Development
+test
+**/*.spec.ts
+**/*.test.ts
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+.vscode
+
+# Docker
+Dockerfile
+docker-compose.yml
+.docker
+.dockerignore
+
+# Documentation
+README.md
+CHANGELOG.md
+docs
+
+# System Files
+.DS_Store
+Thumbs.db
