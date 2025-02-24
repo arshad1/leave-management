@@ -8,10 +8,14 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { AuthController } from './controllers/auth.controller';
 import { UsersModule } from '../users/users.module';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { OTP } from './entities/otp.entity';
+import { OtpController } from './controllers/otp.controller';
+import { OtpService } from './services/otp.service';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RefreshToken]),
+    TypeOrmModule.forFeature([RefreshToken, OTP]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -24,9 +28,10 @@ import { RefreshToken } from './entities/refresh-token.entity';
       inject: [ConfigService],
     }),
     UsersModule,
+    EmailModule,
   ],
-  providers: [AuthService, JwtStrategy],
-  controllers: [AuthController],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, OtpService],
+  controllers: [AuthController, OtpController],
+  exports: [AuthService, OtpService],
 })
 export class AuthModule {}
