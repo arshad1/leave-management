@@ -1,0 +1,311 @@
+{
+    "nodes": [
+      {
+        "parameters": {
+          "updates": [
+            "message"
+          ],
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.telegramTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -680,
+          -280
+        ],
+        "id": "c37626c5-08d1-404d-b75e-702e9b90e1b2",
+        "name": "Telegram Trigger",
+        "webhookId": "b064018f-c12b-4fbf-9031-af415cf50468",
+        "credentials": {
+          "telegramApi": {
+            "id": "XKwbqjH7qzx5sjAg",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+          "text": "={{ $json.message }}",
+          "additionalFields": {
+            "appendAttribution": false
+          }
+        },
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          -260
+        ],
+        "id": "9d61dd11-9619-4c75-9ded-39d87823874b",
+        "name": "Telegram",
+        "webhookId": "f0b90bfe-9b82-40ed-af1d-7966ee99abf1",
+        "notesInFlow": false,
+        "credentials": {
+          "telegramApi": {
+            "id": "XKwbqjH7qzx5sjAg",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "let globalState = $getWorkflowStaticData('global');\n\nconst wh = $input.first().json.body\nif(wh && wh.clear_global){\n  globalState[wh.chat_id]= {step:\"\",createdAt:\"\",createdBy:\"\" }\n  return {\n  state:{\n    step:\"email\"\n  },\n  chatId: wh.chat_id \n  }\n}\nconst data = $(\"Telegram Trigger\").first().json.message\n\nconst message = data.text;\nconst chatId = data.chat.id;\n\n\n// Current date/time and user info\nconst currentDateTime = data.date;\nconst currentUser = data.from.username \n\n// Check conversation state\n\n\nif(message==\"#clear\"){\n  console.log(\"clearing....\")\n   globalState[chatId]= null;\n  console.log(\"After clearing....\", globalState)\n}\n\nif(!globalState[chatId] || globalState[chatId]==null)\n  globalState[chatId]= {'step': \"\", 'createdAt': currentDateTime, 'createdBy': currentUser}\n\nconst state = globalState[chatId];\nconsole.log(\"state\",state)\nif (!state.step) {\n  state.step = 'email';\n}\n\n// Email validation regex pattern\nconst emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/;\n\n// List of allowed company domains - add your company domains here\nconst companyDomains = ['codepoints.in'];\n\n// Function to validate email\nfunction validateEmail(email) {\n  if (!email) return { valid: false, message: 'Email is required.' };\n  \n  email = email.trim().toLowerCase();\n  \n  if (!emailRegex.test(email)) {\n    return { valid: false, message: 'Please enter a valid email address. For example: name@company.com' };\n  }\n  \n  // Check if it's a company email\n  const domain = email.split('@')[1];\n  if (!companyDomains.includes(domain)) {\n    return { valid: false, message: `Please use your company email address. Allowed domains: ${companyDomains.join(', ')}` };\n  }\n  \n  return { valid: true, email };\n}\n\n// Check for duplicate email\nfunction isDuplicateEmail(email, globalState) {\n  for (const [chatKey, userData] of Object.entries(globalState)) {\n    if (chatKey !== chatId.toString() && userData.email === email) {\n      return true;\n    }\n  }\n  return false;\n}\n\n// Process based on current step\nlet nextMessage = '';\nif (state.step === 'email') {\n  // Enhanced email validation\n  if (message.includes('@')) {\n    const validation = validateEmail(message);\n    \n    if (validation.valid) {\n      // Check for duplicate email\n      if (isDuplicateEmail(validation.email, globalState)) {\n        nextMessage = 'This email is already registered. Please use a different company email address.';\n      } else {\n        state.email = validation.email;\n        state.step = 'phone';\n        state.updatedAt = currentDateTime;\n        state.updatedBy = currentUser;\n        nextMessage = 'Great! Now please share your phone number:';\n      }\n    } else {\n      nextMessage = validation.message;\n    }\n  } else {\n    nextMessage = 'Please enter your company email:';\n  }\n} else if (state.step === 'phone') {\n  // Store phone and complete\n  state.phone = message;\n  state.step = 'complete';\n  state.updatedAt = currentDateTime;\n  state.updatedBy = currentUser;\n  nextMessage = `Thank you! Here's what I recorded:\\nEmail: ${state.email}\\nPhone: ${state.phone}\\nRegistered on: ${state.createdAt}\\nLast updated: ${state.updatedAt}`;\n} else if (state.step === 'complete') {\n  nextMessage = `Thank you! Here's what I recorded:\\nEmail: ${state.email}\\nPhone: ${state.phone}\\nRegistered on: ${state.createdAt}\\nLast updated: ${state.updatedAt}`;\n}\n\n// Return data for next node\nreturn {\n  state,\n  chatId,\n  message: nextMessage\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -300,
+          -280
+        ],
+        "id": "9c7bf61c-29b5-4904-87e0-df087e25aeaf",
+        "name": "Code"
+      },
+      {
+        "parameters": {
+          "operation": "sendChatAction",
+          "chatId": "={{ $json.message.chat.id }}"
+        },
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          -480,
+          -360
+        ],
+        "id": "3433fb2e-4c39-4426-8cac-ba30bed6f56d",
+        "name": "Typing",
+        "webhookId": "c09000e0-2942-489c-9be5-e4b2526b738c",
+        "credentials": {
+          "telegramApi": {
+            "id": "XKwbqjH7qzx5sjAg",
+            "name": "Telegram account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.state.step }}",
+                      "rightValue": "=phone",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "step=phone validate email"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "id": "dd82d907-135d-4b3d-b1ca-4f3ae87eece2",
+                      "leftValue": "={{ $json.state.step }}",
+                      "rightValue": "complete",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "step=completed validate phone"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                  },
+                  "conditions": [
+                    {
+                      "id": "ddf0360a-4bfe-4ff3-bcc7-d75affa46653",
+                      "leftValue": "={{ $json.state.step }}",
+                      "rightValue": "email",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "step=email"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          -40,
+          -460
+        ],
+        "id": "e1539e9f-ee84-45df-aaa0-d1b46a219486",
+        "name": "Switch"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://6fd9-202-164-154-212.ngrok-free.app/api/users/n8n/check-user",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "=identifier",
+                "value": "={{ $('Code').item.json.state.email}}"
+              },
+              {
+                "name": "type",
+                "value": "=email"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          360,
+          -620
+        ],
+        "id": "f560325c-4991-42d6-96f0-7b0bb5487586",
+        "name": "HTTP Request1"
+      },
+      {
+        "parameters": {
+          "jsCode": "const userExits = $input.first().json.exists\n  const chatId= $('Code').first().json.chatId\nif(!userExits) {\n  let globalState = $getWorkflowStaticData('global');\n\n  globalState[chatId]=null\n\n}\nreturn {}\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          640,
+          -600
+        ],
+        "id": "375fc185-12a0-44b1-84c5-d771806cc121",
+        "name": "Code1"
+      }
+    ],
+    "connections": {
+      "Telegram Trigger": {
+        "main": [
+          [
+            {
+              "node": "Typing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Telegram": {
+        "main": [
+          []
+        ]
+      },
+      "Code": {
+        "main": [
+          [
+            {
+              "node": "Switch",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Typing": {
+        "main": [
+          [
+            {
+              "node": "Code",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch": {
+        "main": [
+          [
+            {
+              "node": "HTTP Request1",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Telegram",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Telegram",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "HTTP Request1": {
+        "main": [
+          [
+            {
+              "node": "Telegram",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Code1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "pinData": {
+      "HTTP Request1": [
+        {
+          "exists": false,
+          "message": "You are not registered yet.",
+          "user": null
+        }
+      ]
+    },
+    "meta": {
+      "templateCredsSetupCompleted": true,
+      "instanceId": "db3440250b340d709420755977166432994e4da362c89cdbcf461a16c8340ab5"
+    }
+  }
